@@ -646,6 +646,130 @@
         ::-webkit-scrollbar { width: 10px; }
         ::-webkit-scrollbar-track { background: #001500; border-radius: 5px; }
         ::-webkit-scrollbar-thumb { background: #0f0; border-radius: 5px; }
+
+        .dev-tabs {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .dev-tab {
+            flex: 1;
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 2px solid #0f0;
+            background: transparent;
+            color: #0f0;
+            cursor: pointer;
+            font-family: 'Orbitron';
+            font-size: 12px;
+            transition: 0.2s;
+        }
+        .dev-tab.active {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 20px #0f0;
+        }
+        .dev-content {
+            margin-top: 10px;
+            max-height: 55vh;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 12px;
+        }
+        .dev-stat-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .dev-stat-card {
+            flex: 1;
+            background: rgba(0, 30, 0, 0.7);
+            border-radius: 15px;
+            padding: 10px 15px;
+            border: 2px solid #0f03;
+        }
+        .dev-stat-card .val {
+            font-size: 20px;
+            color: gold;
+            margin-bottom: 5px;
+        }
+        .dev-stat-card .label {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+        .dev-user-list {
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        .dev-user-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            background: rgba(0, 30, 0, 0.7);
+            border: 2px solid #0f03;
+        }
+        .dev-user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+        .dev-user-name { color: #0f0; font-weight: bold; }
+        .dev-user-email { opacity: 0.7; font-size: 11px; }
+        .dev-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .dev-status-online { background: #0f0; box-shadow: 0 0 10px #0f0; }
+        .dev-status-offline { background: #555; }
+        .dev-user-fields {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .dev-user-fields input {
+            flex: 1;
+            font-size: 11px;
+            padding: 6px 8px;
+        }
+        .dev-user-actions {
+            margin-top: 6px;
+            display: flex;
+            gap: 6px;
+        }
+        .dev-user-actions button {
+            flex: 1;
+            padding: 6px 8px;
+            font-size: 10px;
+        }
+        .profile-status {
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        .profile-status.online { color: #0f0; }
+        .profile-status.offline { color: #888; }
+
+        #banned-screen {
+            display:none;
+            position:fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            background:#000;
+            z-index:10000;
+            flex-direction:column;
+            justify-content:center;
+            align-items:center;
+            color:#f00;
+            font-family:'Orbitron';
+            text-align:center;
+        }
     </style>
 </head>
 <body>
@@ -897,6 +1021,86 @@
     </div>
     <div id="game-container"><canvas id="game" width="600" height="600"></canvas></div>
 
+    <div id="dev-modal" class="box popup-box" style="width: 880px; max-width: 95vw; height: 80vh; display: none; z-index: 3000;">
+        <button class="close-btn" onclick="hideDevPanel()">X</button>
+        <h2 style="color:#0f0;">DEV CONTROL</h2>
+        <div class="dev-tabs">
+            <button class="dev-tab active" onclick="switchDevTab('dev-analytics')">ANALYTICS</button>
+            <button class="dev-tab" onclick="switchDevTab('dev-accounts')">ACCOUNTS</button>
+            <button class="dev-tab" onclick="switchDevTab('dev-game')">IN-GAME</button>
+            <button class="dev-tab" onclick="switchDevTab('dev-bans')" style="color:#f00;border-color:#f00;">BAN</button>
+        </div>
+        <div id="dev-analytics" class="dev-content">
+            <div class="dev-stat-row">
+                <div class="dev-stat-card">
+                    <div class="val" id="dev-total-users">0</div>
+                    <div class="label">Total Users</div>
+                </div>
+                <div class="dev-stat-card">
+                    <div class="val" id="dev-online">0</div>
+                    <div class="label">Online Now</div>
+                </div>
+                <div class="dev-stat-card">
+                    <div class="val" id="dev-battles">0</div>
+                    <div class="label">Active Battles</div>
+                </div>
+            </div>
+            <h3>Server</h3>
+            <div style="background:#001500;padding:15px;border-radius:10px;font-family:monospace;color:#0f0;">
+                <div>Firebase: <span id="dev-fb-status">INIT...</span></div>
+                <div>Latency: <span id="dev-latency">...</span> ms</div>
+            </div>
+        </div>
+        <div id="dev-accounts" class="dev-content" style="display:none;">
+            <input type="text" id="dev-search" placeholder="Search user by name or email..." onkeyup="filterDevUsers()" style="width:100%;margin-bottom:10px;">
+            <div class="dev-user-list" id="dev-user-list"></div>
+        </div>
+        <div id="dev-bans" class="dev-content" style="display:none;">
+            <input type="text" id="dev-ban-search" placeholder="Search user..." onkeyup="filterBanList()" style="width:100%;margin-bottom:10px;border-color:#f00;color:#f00;">
+            <div class="dev-user-list" id="dev-ban-list"></div>
+        </div>
+        <div id="dev-game" class="dev-content" style="display:none;">
+            <h3>God Mode</h3>
+            <label class="custom-check">
+                <input type="checkbox" onchange="toggleGodMode(this)">
+                <span class="check-circle"></span>
+                Invincibility
+            </label>
+            <h3 style="margin-top:20px;">Game Control</h3>
+            <button class="btn small" onclick="devSpawnBonus()">Spawn Bonus</button>
+            <button class="btn small" onclick="devAddScore()">+100 Score</button>
+            <button class="btn small" onclick="devWinBattle()">Force Win Battle</button>
+        </div>
+    </div>
+
+    <div id="dev-notification-modal" class="box popup-box" style="z-index: 3100; display:none; width:460px;">
+        <button class="close-btn" onclick="document.getElementById('dev-notification-modal').style.display='none'">X</button>
+        <h2>SEND NOTIFICATION</h2>
+        <p>To: <span id="notif-target-name" style="color:gold;"></span></p>
+        <textarea id="dev-notif-text" style="width:100%;height:100px;background:#001500;border:2px solid #0f0;color:#0f0;padding:10px;margin:15px 0;" placeholder="Message..."></textarea>
+        <button class="btn small" onclick="sendDevNotification()">SEND</button>
+    </div>
+
+    <div id="ban-confirm-modal" class="box popup-box" style="z-index: 3100; display:none; width:460px;border-color:#f00;">
+        <button class="close-btn" onclick="closeBanModal()">X</button>
+        <h2 style="color:#f00">BAN USER</h2>
+        <p>Target: <span id="ban-target-name" style="color:#fff"></span></p>
+        <div class="option">
+            <label style="color:#f00">Reason:</label>
+            <input type="text" id="ban-reason" placeholder="Cheating, toxicity, etc..." style="border-color:#f00;color:#f00;">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px;">
+            <button class="btn" onclick="closeBanModal()">CANCEL</button>
+            <button class="btn danger" onclick="executeBan()" id="ban-confirm-btn">CONFIRM BAN</button>
+        </div>
+    </div>
+
+    <div id="banned-screen">
+        <h1 style="font-size:80px;margin-bottom:20px;text-shadow:0 0 50px #f00;">YOU ARE BANNED</h1>
+        <div style="font-size:24px;color:#fff;margin-bottom:40px;">Reason: <span id="ban-reason-display" style="color:#f00;font-weight:bold;"></span></div>
+        <div style="font-size:14px;opacity:0.5;">Contact support if you think this is a mistake.</div>
+    </div>
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyDuy71JU0c_Igqs0QQmpKSQehY6mW8tE0U",
@@ -913,6 +1117,13 @@
     let userProfile = null;
     let firebaseReady = false;
     let viewingProfileId = null;
+
+    const DEV_EMAIL = 'artemkirsanov1320@gmail.com';
+    let isDev = false;
+    let godMode = false;
+    let presenceRef = null;
+    let banStatusListenerSet = false;
+    let currentUserBanRef = null;
 
     try {
         app = firebase.initializeApp(firebaseConfig);
@@ -1353,9 +1564,321 @@
     if (auth && firebaseReady) {
         auth.onAuthStateChanged((user) => {
             currentUser = user;
-            if (user) loadUserData();
-            else { userProfile = null; updateAuthUI(); updateUserDisplay(); }
+            isDev = !!(user && user.email === DEV_EMAIL);
+            if (presenceRef) {
+                presenceRef.remove();
+                presenceRef = null;
+            }
+            if (currentUserBanRef) {
+                currentUserBanRef.off();
+                currentUserBanRef = null;
+            }
+
+            if (user) {
+                loadUserData();
+                setupPresence();
+                setupBanWatcher();
+            } else {
+                userProfile = null;
+                updateAuthUI();
+                updateUserDisplay();
+                hideDevPanel();
+                document.getElementById('banned-screen').style.display = 'none';
+            }
         });
+    }
+
+    function setupPresence() {
+        if (!database || !currentUser) return;
+        presenceRef = database.ref('presence/' + currentUser.uid);
+        presenceRef.set({ online: true, lastSeen: Date.now() });
+        presenceRef.onDisconnect().set({ online: false, lastSeen: Date.now() });
+    }
+
+    function setupBanWatcher() {
+        if (!database || !currentUser) return;
+        currentUserBanRef = database.ref('bans/' + currentUser.uid);
+        currentUserBanRef.on('value', snap => {
+            const data = snap.val();
+            if (data && data.active) {
+                const reason = data.reason || 'No reason provided';
+                document.getElementById('ban-reason-display').innerText = reason;
+                document.getElementById('banned-screen').style.display = 'flex';
+            } else {
+                document.getElementById('banned-screen').style.display = 'none';
+            }
+        });
+    }
+
+    function showDevPanel() {
+        if (!isDev) return;
+        hideAll();
+        showCoinDisplay(false); showUserDisplay(true); showLeaderboardBtn(false); showMusicToggle(true);
+        document.getElementById('dev-modal').style.display = 'block';
+        loadDevAnalytics();
+        loadDevAccounts();
+        loadBanList();
+    }
+
+    function hideDevPanel() {
+        const m = document.getElementById('dev-modal');
+        if (m) m.style.display = 'none';
+    }
+
+    function switchDevTab(id) {
+        document.querySelectorAll('#dev-modal .dev-tab').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('#dev-modal .dev-content').forEach(c => c.style.display = 'none');
+        const btn = Array.from(document.querySelectorAll('#dev-modal .dev-tab')).find(b => b.getAttribute('onclick').includes(id));
+        if (btn) btn.classList.add('active');
+        const tab = document.getElementById(id);
+        if (tab) tab.style.display = 'block';
+    }
+
+    async function loadDevAnalytics() {
+        if (!database || !isDev) return;
+        document.getElementById('dev-fb-status').innerText = firebaseReady ? 'CONNECTED' : 'ERROR';
+        try {
+            const usersSnap = await database.ref('users').once('value');
+            document.getElementById('dev-total-users').innerText = usersSnap.numChildren();
+            const presenceSnap = await database.ref('presence').orderByChild('online').equalTo(true).once('value');
+            document.getElementById('dev-online').innerText = presenceSnap.numChildren();
+            const battlesSnap = await database.ref('battles').orderByChild('status').equalTo('preparing').once('value');
+            document.getElementById('dev-battles').innerText = battlesSnap.numChildren();
+        } catch (e) {
+            console.error('Dev analytics error', e);
+        }
+
+        const t0 = performance.now();
+        try {
+            await database.ref('.info/connected').once('value');
+            const dt = Math.round(performance.now() - t0);
+            document.getElementById('dev-latency').innerText = dt;
+        } catch (e) {
+            document.getElementById('dev-latency').innerText = 'ERR';
+        }
+    }
+
+    async function loadDevAccounts() {
+        if (!database || !isDev) return;
+        const list = document.getElementById('dev-user-list');
+        list.innerHTML = 'Loading...';
+        const snap = await database.ref('users').limitToLast(200).once('value');
+        const items = [];
+        snap.forEach(c => {
+            const d = c.val();
+            if (!d) return;
+            items.push({ id: c.key, ...d });
+        });
+        items.sort((a,b) => (b.highScore||0) - (a.highScore||0));
+        list.innerHTML = items.map(u => {
+            const nick = u.username || 'Player';
+            const email = u.email || '';
+            const coinsVal = u.coins || 0;
+            const scoreVal = u.highScore || 0;
+            const trophiesVal = u.trophies || 0;
+            const statusId = 'status-' + u.id;
+            return `
+                <div class="dev-user-item" data-id="${u.id}" data-name="${nick.toLowerCase()}" data-email="${email.toLowerCase()}">
+                    <div class="dev-user-header">
+                        <div>
+                            <span class="dev-user-name">${nick}</span>
+                            <div class="dev-user-email">${email}</div>
+                        </div>
+                        <div class="profile-status" id="${statusId}">status...</div>
+                    </div>
+                    <div class="dev-user-fields">
+                        <input type="number" value="${coinsVal}" data-field="coins" placeholder="Coins">
+                        <input type="number" value="${scoreVal}" data-field="highScore" placeholder="Score">
+                        <input type="number" value="${trophiesVal}" data-field="trophies" placeholder="Trophies">
+                    </div>
+                    <div class="dev-user-actions">
+                        <button class="btn small" onclick="devSaveUser('${u.id}', this)">SAVE</button>
+                        <button class="btn small" onclick="openDevNotification('${u.id}', '${nick.replace(/'/g, "\\'")}')">NOTIFY</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const presSnap = await database.ref('presence').once('value');
+        const pres = presSnap.val() || {};
+        items.forEach(u => {
+            const el = document.getElementById('status-' + u.id);
+            if (!el) return;
+            const p = pres[u.id];
+            if (p && p.online) {
+                el.textContent = 'online';
+                el.classList.add('online');
+                el.classList.remove('offline');
+            } else {
+                el.textContent = 'offline';
+                el.classList.add('offline');
+                el.classList.remove('online');
+            }
+        });
+    }
+
+    function filterDevUsers() {
+        const q = document.getElementById('dev-search').value.toLowerCase();
+        document.querySelectorAll('#dev-user-list .dev-user-item').forEach(it => {
+            const name = it.getAttribute('data-name') || '';
+            const email = it.getAttribute('data-email') || '';
+            it.style.display = (name.includes(q) || email.includes(q)) ? 'block' : 'none';
+        });
+    }
+
+    async function devSaveUser(uid, btn) {
+        if (!database || !isDev) return;
+        const item = btn.closest('.dev-user-item');
+        const fields = item.querySelectorAll('input[data-field]');
+        const data = {};
+        fields.forEach(inp => { data[inp.dataset.field] = parseInt(inp.value) || 0; });
+        await database.ref('users/' + uid).update(data);
+        if (uid === (currentUser && currentUser.uid)) {
+            coins = data.coins;
+            localHighScore = data.highScore;
+            trophies = data.trophies;
+            saveData();
+            updateCoinDisplay();
+            loadProfileForm();
+        }
+        await database.ref('leaderboard/' + uid).update({ score: data.highScore, trophies: data.trophies });
+        showToast('User updated', 'success');
+    }
+
+    function openDevNotification(uid, name) {
+        const m = document.getElementById('dev-notification-modal');
+        m.style.display = 'block';
+        m.dataset.uid = uid;
+        document.getElementById('notif-target-name').innerText = name;
+        document.getElementById('dev-notif-text').value = '';
+    }
+
+    async function sendDevNotification() {
+        if (!database || !isDev) return;
+        const m = document.getElementById('dev-notification-modal');
+        const uid = m.dataset.uid;
+        const text = document.getElementById('dev-notif-text').value.trim();
+        if (!uid || !text) return;
+        await database.ref('messages/' + uid).push({
+            fromId: currentUser.uid,
+            fromName: '[SYSTEM]',
+            text,
+            timestamp: Date.now(),
+            read: false
+        });
+        m.style.display = 'none';
+        showToast('Notification sent', 'gold');
+    }
+
+    async function loadBanList() {
+        if (!database || !isDev) return;
+        const list = document.getElementById('dev-ban-list');
+        list.innerHTML = 'Loading...';
+        const usersSnap = await database.ref('users').limitToLast(200).once('value');
+        const bansSnap = await database.ref('bans').once('value');
+        const bans = bansSnap.val() || {};
+        const items = [];
+        usersSnap.forEach(c => {
+            const d = c.val();
+            if (!d) return;
+            const ban = bans[c.key];
+            items.push({ id: c.key, ...d, ban });
+        });
+        items.sort((a,b) => (a.username||'').localeCompare(b.username||''));
+        list.innerHTML = items.map(u => {
+            const nick = u.username || 'Player';
+            const email = u.email || '';
+            const active = !!(u.ban && u.ban.active);
+            const reason = u.ban && u.ban.reason ? u.ban.reason : '';
+            const statusText = active ? 'banned' : 'active';
+            const statusColor = active ? '#f00' : '#0f0';
+            const btnText = active ? 'UNBAN' : 'BAN';
+            const btnClass = active ? '' : 'danger';
+            return `
+                <div class="dev-user-item" data-id="${u.id}" data-name="${nick.toLowerCase()}" data-email="${email.toLowerCase()}">
+                    <div class="dev-user-header">
+                        <div>
+                            <span class="dev-user-name">${nick}</span>
+                            <div class="dev-user-email">${email}</div>
+                        </div>
+                        <div style="font-size:11px;color:${statusColor}">${statusText}</div>
+                    </div>
+                    ${active && reason ? `<div style="font-size:11px;color:#faa;margin-top:4px;">Reason: ${reason}</div>` : ''}
+                    <div class="dev-user-actions">
+                        <button class="btn small ${btnClass}" onclick="toggleBanUser('${u.id}', '${nick.replace(/'/g, "\\'")}', ${active})">${btnText}</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function filterBanList() {
+        const q = document.getElementById('dev-ban-search').value.toLowerCase();
+        document.querySelectorAll('#dev-ban-list .dev-user-item').forEach(it => {
+            const name = it.getAttribute('data-name') || '';
+            const email = it.getAttribute('data-email') || '';
+            it.style.display = (name.includes(q) || email.includes(q)) ? 'block' : 'none';
+        });
+    }
+
+    let banTargetId = null;
+    function toggleBanUser(uid, name, isBanned) {
+        if (!isDev) return;
+        if (isBanned) {
+            database.ref('bans/' + uid).set({ active: false });
+            showToast('User unbanned', 'success');
+            loadBanList();
+        } else {
+            banTargetId = uid;
+            document.getElementById('ban-target-name').innerText = name;
+            document.getElementById('ban-reason').value = '';
+            document.getElementById('ban-confirm-modal').style.display = 'block';
+        }
+    }
+
+    function closeBanModal() {
+        document.getElementById('ban-confirm-modal').style.display = 'none';
+        banTargetId = null;
+    }
+
+    async function executeBan() {
+        if (!database || !isDev || !banTargetId) return;
+        const reason = document.getElementById('ban-reason').value.trim() || 'No reason provided';
+        await database.ref('bans/' + banTargetId).set({
+            active: true,
+            reason,
+            timestamp: Date.now(),
+            by: currentUser.uid
+        });
+        closeBanModal();
+        showToast('User banned', 'danger');
+        loadBanList();
+    }
+
+    function toggleGodMode(chk) {
+        godMode = chk.checked;
+        showToast(godMode ? 'God mode ON' : 'God mode OFF', 'gold');
+    }
+
+    function devSpawnBonus() {
+        if (!godMode) return;
+        if (bonuses.length === 0) {
+            bonuses.push({ x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID) });
+        }
+    }
+
+    function devAddScore() {
+        if (!godMode) return;
+        score += 100;
+        document.getElementById('score-val').innerText = score;
+        if (isBattleMode) updateBattleScore();
+    }
+
+    function devWinBattle() {
+        if (!godMode || !isBattleMode) return;
+        opponentScore = 0;
+        score = 999;
+        endBattle();
     }
 
     function showMessages() {
@@ -2218,6 +2741,9 @@
             if (performance.now() - lastTime > speed * 0.3) lastTime = 0;
         }
         if (e.key === 'Escape' && gameActive && !isBattleMode) endGame(false);
+        if (e.key === '`' && isDev) {
+            showDevPanel();
+        }
     };
 
     document.addEventListener('click', () => initAudio(), { once: true });
