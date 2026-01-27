@@ -1244,8 +1244,21 @@
         playSound('click');
         if (auth && firebaseReady) {
             auth.signOut().then(() => {
-                currentUser = null; userProfile = null;
-                updateAuthUI(); updateUserDisplay();
+                currentUser = null;
+                userProfile = null;
+                coins = 0;
+                localHighScore = 0;
+                trophies = 0;
+                ownedSkins = ['classic'];
+                selectedSkin = 'classic';
+                localStorage.removeItem('lumisnake_coins');
+                localStorage.removeItem('lumisnake_highscore');
+                localStorage.removeItem('lumisnake_trophies');
+                localStorage.removeItem('lumisnake_skins');
+                localStorage.removeItem('lumisnake_selected');
+                updateCoinDisplay();
+                updateAuthUI();
+                updateUserDisplay();
                 showToast('Logged out', 'success');
             });
         }
@@ -1257,22 +1270,38 @@
             const data = snapshot.val();
             if (data) {
                 userProfile = data;
-                coins = Math.max(coins, data.coins || 0);
-                localHighScore = Math.max(localHighScore, data.highScore || 0);
-                trophies = Math.max(trophies, data.trophies || 0);
-                if (data.ownedSkins) ownedSkins = [...new Set([...ownedSkins, ...data.ownedSkins])];
-                if (data.selectedSkin && ownedSkins.includes(data.selectedSkin)) selectedSkin = data.selectedSkin;
-                updateCoinDisplay(); saveData();
+                coins = data.coins || 0;
+                localHighScore = data.highScore || 0;
+                trophies = data.trophies || 0;
+                ownedSkins = data.ownedSkins || ['classic'];
+                selectedSkin = data.selectedSkin || 'classic';
+                if (!ownedSkins.includes('classic')) ownedSkins.unshift('classic');
+                saveData();
+                updateCoinDisplay();
             } else {
+                coins = 0;
+                localHighScore = 0;
+                trophies = 0;
+                ownedSkins = ['classic'];
+                selectedSkin = 'classic';
                 userProfile = {
                     username: currentUser.displayName || 'Player',
-                    description: '', hideEmail: false, email: currentUser.email,
-                    coins, highScore: localHighScore, trophies,
-                    ownedSkins, selectedSkin, createdAt: Date.now()
+                    description: '',
+                    hideEmail: false,
+                    email: currentUser.email,
+                    coins: 0,
+                    highScore: 0,
+                    trophies: 0,
+                    ownedSkins: ['classic'],
+                    selectedSkin: 'classic',
+                    createdAt: Date.now()
                 };
                 database.ref('users/' + currentUser.uid).set(userProfile);
+                saveData();
+                updateCoinDisplay();
             }
-            updateUserDisplay(); updateAuthUI();
+            updateUserDisplay();
+            updateAuthUI();
         });
     }
 
@@ -1442,7 +1471,12 @@
         list.innerHTML = '<p style="opacity:0.6;text-align:center;padding:40px;">Loading...</p>';
         database.ref('leaderboard').orderByChild('score').limitToLast(20).once('value').then((snapshot) => {
             const entries = [];
-            snapshot.forEach(child => entries.push({ id: child.key, ...child.val() }));
+            snapshot.forEach(child => {
+                const val = child.val();
+                if (val && val.score !== undefined && val.name) {
+                    entries.push({ id: child.key, ...val });
+                }
+            });
             entries.reverse();
             if (entries.length === 0) {
                 list.innerHTML = '<p style="opacity:0.6;text-align:center;padding:40px;">No scores yet!</p>';
@@ -1452,18 +1486,24 @@
                 const rank = i + 1;
                 const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
                 const isMe = currentUser && e.id === currentUser.uid;
+                const playerName = e.name || 'Player';
+                const playerScore = e.score || 0;
+                const playerTrophies = e.trophies || 0;
                 return `
                     <div class="leaderboard-item ${rankClass}" onclick="viewProfile('${e.id}')" data-uid="${e.id}">
                         <span class="lb-rank ${rankClass}">${rank}</span>
                         <img class="lb-avatar" src="${e.photoURL || ''}" onerror="this.style.display='none'">
                         <div class="lb-info">
-                            <div class="lb-name">${e.name}${isMe ? ' (You)' : ''}</div>
-                            ${e.trophies ? `<div class="lb-trophies">🏆 ${e.trophies} trophies</div>` : ''}
+                            <div class="lb-name">${playerName}${isMe ? ' (You)' : ''}</div>
+                            ${playerTrophies > 0 ? `<div class="lb-trophies">🏆 ${playerTrophies} trophies</div>` : ''}
                         </div>
-                        <span class="lb-score">${e.score.toLocaleString()}</span>
+                        <span class="lb-score">${playerScore.toLocaleString()}</span>
                     </div>
                 `;
             }).join('');
+        }).catch(err => {
+            console.error('Leaderboard error:', err);
+            list.innerHTML = '<p style="opacity:0.6;text-align:center;padding:40px;">Error loading leaderboard</p>';
         });
     }
 
@@ -1476,19 +1516,31 @@
         playSound('record');
         
         if (currentUser && database && firebaseReady) {
-            await database.ref('leaderboard/' + currentUser.uid).set({
-                name: userProfile?.username || currentUser.displayName || 'Player',
-                score: newScore,
-                photoURL: currentUser.photoURL || '',
-                hideEmail: userProfile?.hideEmail || false,
-                trophies: trophies
-            });
-            const snapshot = await database.ref('leaderboard').orderByChild('score').limitToLast(1).once('value');
-            let topScore = 0;
-            snapshot.forEach(c => topScore = c.val().score);
-            if (newScore >= topScore) {
-                document.getElementById('first-place-msg').style.display = 'block';
-                setTimeout(() => playSound('first'), 500);
+            try {
+                await database.ref('leaderboard/' + currentUser.uid).set({
+                    name: userProfile?.username || currentUser.displayName || 'Player',
+                    score: newScore,
+                    photoURL: currentUser.photoURL || '',
+                    hideEmail: userProfile?.hideEmail || false,
+                    trophies: trophies || 0
+                });
+                
+                await database.ref('users/' + currentUser.uid).update({
+                    highScore: newScore
+                });
+                
+                const snapshot = await database.ref('leaderboard').orderByChild('score').limitToLast(1).once('value');
+                let topScore = 0;
+                snapshot.forEach(c => {
+                    const val = c.val();
+                    if (val && val.score) topScore = val.score;
+                });
+                if (newScore >= topScore) {
+                    document.getElementById('first-place-msg').style.display = 'block';
+                    setTimeout(() => playSound('first'), 500);
+                }
+            } catch (err) {
+                console.error('Leaderboard update error:', err);
             }
         }
     }
@@ -1584,46 +1636,47 @@
         const queueRef = database.ref('matchmaking/' + gridSize);
         const myEntry = {
             oderId: currentUser.uid,
-            odername: userProfile?.username || currentUser.displayName,
+            playerName: userProfile?.username || currentUser.displayName || 'Player',
             timestamp: Date.now()
         };
         
         const snapshot = await queueRef.orderByChild('timestamp').limitToFirst(1).once('value');
         let opponent = null;
-        snapshot.forEach(c => { if (c.key !== currentUser.uid) opponent = { id: c.key, ...c.val() }; });
+        snapshot.forEach(c => {
+            const val = c.val();
+            if (val.oderId && val.oderId !== currentUser.uid) {
+                opponent = { oderId: val.oderId, playerName: val.playerName };
+            }
+        });
         
-        if (opponent && opponent.oderId !== currentUser.uid) {
+        if (opponent) {
             await queueRef.child(opponent.oderId).remove();
             const newBattleId = database.ref('battles').push().key;
             await database.ref('battles/' + newBattleId).set({
-                player1: { oderId: opponent.oderId, name: opponent.odername, score: 0 },
-                player2: { oderId: currentUser.uid, name: userProfile?.username || currentUser.displayName, score: 0 },
+                player1: { oderId: opponent.oderId, name: opponent.playerName, score: 0 },
+                player2: { oderId: currentUser.uid, name: userProfile?.username || currentUser.displayName || 'Player', score: 0 },
                 gridSize: parseInt(gridSize),
                 status: 'preparing',
                 createdAt: Date.now()
             });
-            startBattle(newBattleId, opponent.odername, parseInt(gridSize));
+            startBattle(newBattleId, opponent.playerName, parseInt(gridSize));
         } else {
             matchmakingRef = queueRef.child(currentUser.uid);
             await matchmakingRef.set(myEntry);
             
-            queueRef.on('child_added', async (snap) => {
+            database.ref('battles').orderByChild('createdAt').limitToLast(10).on('child_added', async (bSnap) => {
                 if (!searchingForBattle) return;
-                const data = snap.val();
-                if (data.oderId === currentUser.uid) return;
-                
-                const battleSnapshot = await database.ref('battles').orderByChild('createdAt').limitToLast(5).once('value');
-                battleSnapshot.forEach(bSnap => {
-                    const b = bSnap.val();
-                    if (b.status === 'preparing' && 
-                        ((b.player1.oderId === currentUser.uid) || (b.player2.oderId === currentUser.uid))) {
+                const b = bSnap.val();
+                if (b && b.status === 'preparing') {
+                    if (b.player1.oderId === currentUser.uid || b.player2.oderId === currentUser.uid) {
                         searchingForBattle = false;
+                        database.ref('battles').off();
                         queueRef.off();
                         if (matchmakingRef) matchmakingRef.remove();
                         const oppName = b.player1.oderId === currentUser.uid ? b.player2.name : b.player1.name;
                         startBattle(bSnap.key, oppName, b.gridSize);
                     }
-                });
+                }
             });
         }
     }
@@ -1631,9 +1684,15 @@
     function cancelBattleSearch() {
         playSound('close');
         searchingForBattle = false;
-        if (matchmakingRef) matchmakingRef.remove();
-        const gridSize = document.getElementById('battle-grid-size').value;
-        database.ref('matchmaking/' + gridSize).off();
+        if (matchmakingRef) {
+            matchmakingRef.remove();
+            matchmakingRef = null;
+        }
+        try {
+            const gridSize = document.getElementById('battle-grid-size').value;
+            database.ref('matchmaking/' + gridSize).off();
+            database.ref('battles').off();
+        } catch (e) {}
         showMainMenu();
     }
 
@@ -1687,18 +1746,19 @@
         document.getElementById('game-container').classList.add('battle-mode');
         
         battleRef = database.ref('battles/' + battleId);
-        const playerKey = battleRef.child('player1').once('value').then(s => 
-            s.val().oderId === currentUser.uid ? 'player1' : 'player2'
-        );
+        let myPlayerKey = null;
+        
+        battleRef.child('player1').once('value').then(s => {
+            const p1 = s.val();
+            myPlayerKey = (p1 && p1.oderId === currentUser.uid) ? 'player1' : 'player2';
+        });
         
         battleRef.on('value', snap => {
             const data = snap.val();
-            if (!data) return;
-            playerKey.then(pk => {
-                const oppKey = pk === 'player1' ? 'player2' : 'player1';
-                opponentScore = data[oppKey]?.score || 0;
-                document.getElementById('opp-score').innerText = opponentScore;
-            });
+            if (!data || !myPlayerKey) return;
+            const oppKey = myPlayerKey === 'player1' ? 'player2' : 'player1';
+            opponentScore = data[oppKey]?.score || 0;
+            document.getElementById('opp-score').innerText = opponentScore;
         });
         
         battleTimerInterval = setInterval(() => {
@@ -1713,10 +1773,15 @@
     }
 
     async function updateBattleScore() {
-        if (!battleId || !battleRef) return;
-        const snap = await battleRef.child('player1').once('value');
-        const playerKey = snap.val().oderId === currentUser.uid ? 'player1' : 'player2';
-        battleRef.child(playerKey).update({ score });
+        if (!battleId || !battleRef || !currentUser) return;
+        try {
+            const snap = await battleRef.child('player1').once('value');
+            const p1 = snap.val();
+            const playerKey = (p1 && p1.oderId === currentUser.uid) ? 'player1' : 'player2';
+            await battleRef.child(playerKey).update({ score });
+        } catch (e) {
+            console.error('Battle score update error:', e);
+        }
     }
 
     async function endBattle() {
