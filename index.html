@@ -1623,6 +1623,7 @@
     function hideDevPanel() {
         const m = document.getElementById('dev-modal');
         if (m) m.style.display = 'none';
+        showMainMenu();
     }
 
     function switchDevTab(id) {
@@ -2078,12 +2079,33 @@
         if (!database || !firebaseReady) { showToast('Connect to view profiles', 'gold'); return; }
         playSound('click');
         viewingProfileId = uid;
-        database.ref('users/' + uid).once('value').then(snapshot => {
-            const userData = snapshot.val();
-            if (!userData) { showToast('Profile not found', 'gold'); return; }
-            database.ref('leaderboard/' + uid).once('value').then(lbSnapshot => {
-                displayProfile(uid, userData, lbSnapshot.val());
-            });
+
+        Promise.all([
+            database.ref('users/' + uid).once('value'),
+            database.ref('leaderboard/' + uid).once('value')
+        ]).then(([userSnap, lbSnap]) => {
+            const userData = userSnap.val();
+            const lbData = lbSnap.val();
+
+            if (!userData && !lbData) {
+                showToast('Profile not found', 'gold');
+                return;
+            }
+
+            const mergedUser = userData || {
+                username: lbData?.name || 'Player',
+                description: '',
+                hideEmail: lbData?.hideEmail || false,
+                email: '',
+                highScore: lbData?.score || 0,
+                trophies: lbData?.trophies || 0,
+                createdAt: null
+            };
+
+            displayProfile(uid, mergedUser, lbData || null);
+        }).catch(err => {
+            console.error('View profile error:', err);
+            showToast('Error loading profile', 'gold');
         });
     }
 
