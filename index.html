@@ -1663,59 +1663,70 @@
         if (!database || !isDev) return;
         const list = document.getElementById('dev-user-list');
         list.innerHTML = 'Loading...';
-        const snap = await database.ref('users').limitToLast(200).once('value');
-        const items = [];
-        snap.forEach(c => {
-            const d = c.val();
-            if (!d) return;
-            items.push({ id: c.key, ...d });
-        });
-        items.sort((a,b) => (b.highScore||0) - (a.highScore||0));
-        list.innerHTML = items.map(u => {
-            const nick = u.username || 'Player';
-            const email = u.email || '';
-            const coinsVal = u.coins || 0;
-            const scoreVal = u.highScore || 0;
-            const trophiesVal = u.trophies || 0;
-            const statusId = 'status-' + u.id;
-            return `
-                <div class="dev-user-item" data-id="${u.id}" data-name="${nick.toLowerCase()}" data-email="${email.toLowerCase()}">
-                    <div class="dev-user-header">
-                        <div>
-                            <span class="dev-user-name">${nick}</span>
-                            <div class="dev-user-email">${email}</div>
-                        </div>
-                        <div class="profile-status" id="${statusId}">status...</div>
-                    </div>
-                    <div class="dev-user-fields">
-                        <input type="number" value="${coinsVal}" data-field="coins" placeholder="Coins">
-                        <input type="number" value="${scoreVal}" data-field="highScore" placeholder="Score">
-                        <input type="number" value="${trophiesVal}" data-field="trophies" placeholder="Trophies">
-                    </div>
-                    <div class="dev-user-actions">
-                        <button class="btn small" onclick="devSaveUser('${u.id}', this)">SAVE</button>
-                        <button class="btn small" onclick="openDevNotification('${u.id}', '${nick.replace(/'/g, "\\'")}')">NOTIFY</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        const presSnap = await database.ref('presence').once('value');
-        const pres = presSnap.val() || {};
-        items.forEach(u => {
-            const el = document.getElementById('status-' + u.id);
-            if (!el) return;
-            const p = pres[u.id];
-            if (p && p.online) {
-                el.textContent = 'online';
-                el.classList.add('online');
-                el.classList.remove('offline');
-            } else {
-                el.textContent = 'offline';
-                el.classList.add('offline');
-                el.classList.remove('online');
+        try {
+            const snap = await database.ref('users').limitToLast(200).once('value');
+            const items = [];
+            snap.forEach(c => {
+                const d = c.val();
+                if (!d) return;
+                items.push({ id: c.key, ...d });
+            });
+            items.sort((a,b) => (b.highScore||0) - (a.highScore||0));
+            
+            if (items.length === 0) {
+                list.innerHTML = '<p style="opacity:0.6;text-align:center;padding:20px;">No users found</p>';
+                return;
             }
-        });
+            
+            list.innerHTML = items.map(u => {
+                const nick = u.username || 'Player';
+                const email = u.email || '';
+                const coinsVal = u.coins || 0;
+                const scoreVal = u.highScore || 0;
+                const trophiesVal = u.trophies || 0;
+                const statusId = 'status-' + u.id;
+                return `
+                    <div class="dev-user-item" data-id="${u.id}" data-name="${nick.toLowerCase()}" data-email="${email.toLowerCase()}">
+                        <div class="dev-user-header">
+                            <div>
+                                <span class="dev-user-name">${nick}</span>
+                                <div class="dev-user-email">${email}</div>
+                            </div>
+                            <div class="profile-status" id="${statusId}">status...</div>
+                        </div>
+                        <div class="dev-user-fields">
+                            <input type="number" value="${coinsVal}" data-field="coins" placeholder="Coins">
+                            <input type="number" value="${scoreVal}" data-field="highScore" placeholder="Score">
+                            <input type="number" value="${trophiesVal}" data-field="trophies" placeholder="Trophies">
+                        </div>
+                        <div class="dev-user-actions">
+                            <button class="btn small" onclick="devSaveUser('${u.id}', this)">SAVE</button>
+                            <button class="btn small" onclick="openDevNotification('${u.id}', '${nick.replace(/'/g, "\\'")}')">NOTIFY</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const presSnap = await database.ref('presence').once('value');
+            const pres = presSnap.val() || {};
+            items.forEach(u => {
+                const el = document.getElementById('status-' + u.id);
+                if (!el) return;
+                const p = pres[u.id];
+                if (p && p.online) {
+                    el.textContent = 'online';
+                    el.classList.add('online');
+                    el.classList.remove('offline');
+                } else {
+                    el.textContent = 'offline';
+                    el.classList.add('offline');
+                    el.classList.remove('online');
+                }
+            });
+        } catch (e) {
+            console.error('Load accounts error:', e);
+            list.innerHTML = '<p style="color:#f00;text-align:center;padding:20px;">Error loading users</p>';
+        }
     }
 
     function filterDevUsers() {
@@ -1729,21 +1740,26 @@
 
     async function devSaveUser(uid, btn) {
         if (!database || !isDev) return;
-        const item = btn.closest('.dev-user-item');
-        const fields = item.querySelectorAll('input[data-field]');
-        const data = {};
-        fields.forEach(inp => { data[inp.dataset.field] = parseInt(inp.value) || 0; });
-        await database.ref('users/' + uid).update(data);
-        if (uid === (currentUser && currentUser.uid)) {
-            coins = data.coins;
-            localHighScore = data.highScore;
-            trophies = data.trophies;
-            saveData();
-            updateCoinDisplay();
-            loadProfileForm();
+        try {
+            const item = btn.closest('.dev-user-item');
+            const fields = item.querySelectorAll('input[data-field]');
+            const data = {};
+            fields.forEach(inp => { data[inp.dataset.field] = parseInt(inp.value) || 0; });
+            await database.ref('users/' + uid).update(data);
+            if (uid === (currentUser && currentUser.uid)) {
+                coins = data.coins;
+                localHighScore = data.highScore;
+                trophies = data.trophies;
+                saveData();
+                updateCoinDisplay();
+                loadProfileForm();
+            }
+            await database.ref('leaderboard/' + uid).update({ score: data.highScore, trophies: data.trophies });
+            showToast('User updated', 'success');
+        } catch (e) {
+            console.error('Save user error:', e);
+            showToast('Error saving user', 'gold');
         }
-        await database.ref('leaderboard/' + uid).update({ score: data.highScore, trophies: data.trophies });
-        showToast('User updated', 'success');
     }
 
     function openDevNotification(uid, name) {
@@ -1756,61 +1772,77 @@
 
     async function sendDevNotification() {
         if (!database || !isDev) return;
-        const m = document.getElementById('dev-notification-modal');
-        const uid = m.dataset.uid;
-        const text = document.getElementById('dev-notif-text').value.trim();
-        if (!uid || !text) return;
-        await database.ref('messages/' + uid).push({
-            fromId: currentUser.uid,
-            fromName: '[SYSTEM]',
-            text,
-            timestamp: Date.now(),
-            read: false
-        });
-        m.style.display = 'none';
-        showToast('Notification sent', 'gold');
+        try {
+            const m = document.getElementById('dev-notification-modal');
+            const uid = m.dataset.uid;
+            const text = document.getElementById('dev-notif-text').value.trim();
+            if (!uid || !text) return;
+            await database.ref('messages/' + uid).push({
+                fromId: currentUser.uid,
+                fromName: '[SYSTEM]',
+                text,
+                timestamp: Date.now(),
+                read: false
+            });
+            m.style.display = 'none';
+            showToast('Notification sent', 'gold');
+        } catch (e) {
+            console.error('Send notification error:', e);
+            showToast('Error sending notification', 'gold');
+        }
     }
 
     async function loadBanList() {
         if (!database || !isDev) return;
         const list = document.getElementById('dev-ban-list');
         list.innerHTML = 'Loading...';
-        const usersSnap = await database.ref('users').limitToLast(200).once('value');
-        const bansSnap = await database.ref('bans').once('value');
-        const bans = bansSnap.val() || {};
-        const items = [];
-        usersSnap.forEach(c => {
-            const d = c.val();
-            if (!d) return;
-            const ban = bans[c.key];
-            items.push({ id: c.key, ...d, ban });
-        });
-        items.sort((a,b) => (a.username||'').localeCompare(b.username||''));
-        list.innerHTML = items.map(u => {
-            const nick = u.username || 'Player';
-            const email = u.email || '';
-            const active = !!(u.ban && u.ban.active);
-            const reason = u.ban && u.ban.reason ? u.ban.reason : '';
-            const statusText = active ? 'banned' : 'active';
-            const statusColor = active ? '#f00' : '#0f0';
-            const btnText = active ? 'UNBAN' : 'BAN';
-            const btnClass = active ? '' : 'danger';
-            return `
-                <div class="dev-user-item" data-id="${u.id}" data-name="${nick.toLowerCase()}" data-email="${email.toLowerCase()}">
-                    <div class="dev-user-header">
-                        <div>
-                            <span class="dev-user-name">${nick}</span>
-                            <div class="dev-user-email">${email}</div>
+        try {
+            const usersSnap = await database.ref('users').limitToLast(200).once('value');
+            const bansSnap = await database.ref('bans').once('value');
+            const bans = bansSnap.val() || {};
+            const items = [];
+            usersSnap.forEach(c => {
+                const d = c.val();
+                if (!d) return;
+                const ban = bans[c.key];
+                items.push({ id: c.key, ...d, ban });
+            });
+            items.sort((a,b) => (a.username||'').localeCompare(b.username||''));
+            
+            if (items.length === 0) {
+                list.innerHTML = '<p style="opacity:0.6;text-align:center;padding:20px;">No users found</p>';
+                return;
+            }
+            
+            list.innerHTML = items.map(u => {
+                const nick = u.username || 'Player';
+                const email = u.email || '';
+                const active = !!(u.ban && u.ban.active);
+                const reason = u.ban && u.ban.reason ? u.ban.reason : '';
+                const statusText = active ? 'banned' : 'active';
+                const statusColor = active ? '#f00' : '#0f0';
+                const btnText = active ? 'UNBAN' : 'BAN';
+                const btnClass = active ? '' : 'danger';
+                return `
+                    <div class="dev-user-item" data-id="${u.id}" data-name="${nick.toLowerCase()}" data-email="${email.toLowerCase()}">
+                        <div class="dev-user-header">
+                            <div>
+                                <span class="dev-user-name">${nick}</span>
+                                <div class="dev-user-email">${email}</div>
+                            </div>
+                            <div style="font-size:11px;color:${statusColor}">${statusText}</div>
                         </div>
-                        <div style="font-size:11px;color:${statusColor}">${statusText}</div>
+                        ${active && reason ? `<div style="font-size:11px;color:#faa;margin-top:4px;">Reason: ${reason}</div>` : ''}
+                        <div class="dev-user-actions">
+                            <button class="btn small ${btnClass}" onclick="toggleBanUser('${u.id}', '${nick.replace(/'/g, "\\'")}', ${active})">${btnText}</button>
+                        </div>
                     </div>
-                    ${active && reason ? `<div style="font-size:11px;color:#faa;margin-top:4px;">Reason: ${reason}</div>` : ''}
-                    <div class="dev-user-actions">
-                        <button class="btn small ${btnClass}" onclick="toggleBanUser('${u.id}', '${nick.replace(/'/g, "\\'")}', ${active})">${btnText}</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
+        } catch (e) {
+            console.error('Load ban list error:', e);
+            list.innerHTML = '<p style="color:#f00;text-align:center;padding:20px;">Error loading ban list</p>';
+        }
     }
 
     function filterBanList() {
@@ -1844,16 +1876,21 @@
 
     async function executeBan() {
         if (!database || !isDev || !banTargetId) return;
-        const reason = document.getElementById('ban-reason').value.trim() || 'No reason provided';
-        await database.ref('bans/' + banTargetId).set({
-            active: true,
-            reason,
-            timestamp: Date.now(),
-            by: currentUser.uid
-        });
-        closeBanModal();
-        showToast('User banned', 'danger');
-        loadBanList();
+        try {
+            const reason = document.getElementById('ban-reason').value.trim() || 'No reason provided';
+            await database.ref('bans/' + banTargetId).set({
+                active: true,
+                reason,
+                timestamp: Date.now(),
+                by: currentUser.uid
+            });
+            closeBanModal();
+            showToast('User banned', 'gold');
+            loadBanList();
+        } catch (e) {
+            console.error('Ban error:', e);
+            showToast('Error banning user', 'gold');
+        }
     }
 
     function toggleGodMode(chk) {
@@ -1862,21 +1899,21 @@
     }
 
     function devSpawnBonus() {
-        if (!godMode) return;
-        if (bonuses.length === 0) {
-            bonuses.push({ x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID) });
-        }
+        if (!gameActive) { showToast('Start a game first!', 'gold'); return; }
+        bonuses.push({ x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID) });
+        showToast('Bonus spawned!', 'success');
     }
 
     function devAddScore() {
-        if (!godMode) return;
+        if (!gameActive) { showToast('Start a game first!', 'gold'); return; }
         score += 100;
         document.getElementById('score-val').innerText = score;
         if (isBattleMode) updateBattleScore();
+        showToast('+100 Score!', 'success');
     }
 
     function devWinBattle() {
-        if (!godMode || !isBattleMode) return;
+        if (!isBattleMode) { showToast('Start a battle first!', 'gold'); return; }
         opponentScore = 0;
         score = 999;
         endBattle();
@@ -2634,7 +2671,14 @@
                     dir = {x:1,y:0}; nextDir = {x:1,y:0};
                     return;
                 }
-                return endGame(true);
+                if (godMode) {
+                    if (head.x < 0) head.x = GRID - 1;
+                    if (head.x >= GRID) head.x = 0;
+                    if (head.y < 0) head.y = GRID - 1;
+                    if (head.y >= GRID) head.y = 0;
+                } else {
+                    return endGame(true);
+                }
             }
         } else {
             if (head.x < 0) head.x = GRID - 1;
@@ -2649,7 +2693,7 @@
                 dir = {x:1,y:0}; nextDir = {x:1,y:0};
                 return;
             }
-            return endGame(true);
+            if (!godMode) return endGame(true);
         }
         
         snake.unshift(head);
