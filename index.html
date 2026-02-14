@@ -2856,6 +2856,100 @@
         }
     };
 
+    // Gamepad support
+    let gamepadConnected = false;
+    let lastGamepadInput = { x: 0, y: 0 };
+    const JOYSTICK_DEADZONE = 0.5;
+    const DPAD_UP = 12;
+    const DPAD_DOWN = 13;
+    const DPAD_LEFT = 14;
+    const DPAD_RIGHT = 15;
+
+    window.addEventListener('gamepadconnected', (e) => {
+        console.log('Gamepad connected:', e.gamepad.id);
+        gamepadConnected = true;
+        showToast('Gamepad connected! 🎮', 'success');
+    });
+
+    window.addEventListener('gamepaddisconnected', (e) => {
+        console.log('Gamepad disconnected:', e.gamepad.id);
+        gamepadConnected = false;
+        showToast('Gamepad disconnected', 'gold');
+    });
+
+    function pollGamepad() {
+        if (!gameActive) {
+            requestAnimationFrame(pollGamepad);
+            return;
+        }
+
+        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+        
+        for (const gamepad of gamepads) {
+            if (!gamepad) continue;
+
+            let newDir = null;
+
+            // D-pad support (buttons 12-15 on standard gamepad)
+            if (gamepad.buttons[DPAD_UP] && gamepad.buttons[DPAD_UP].pressed) {
+                newDir = { x: 0, y: -1 };
+            } else if (gamepad.buttons[DPAD_DOWN] && gamepad.buttons[DPAD_DOWN].pressed) {
+                newDir = { x: 0, y: 1 };
+            } else if (gamepad.buttons[DPAD_LEFT] && gamepad.buttons[DPAD_LEFT].pressed) {
+                newDir = { x: -1, y: 0 };
+            } else if (gamepad.buttons[DPAD_RIGHT] && gamepad.buttons[DPAD_RIGHT].pressed) {
+                newDir = { x: 1, y: 0 };
+            }
+
+            // Left joystick support (axes 0 and 1)
+            if (!newDir && gamepad.axes.length >= 2) {
+                const axisX = gamepad.axes[0];
+                const axisY = gamepad.axes[1];
+
+                // Determine dominant axis for diagonal prevention
+                if (Math.abs(axisX) > JOYSTICK_DEADZONE || Math.abs(axisY) > JOYSTICK_DEADZONE) {
+                    if (Math.abs(axisX) > Math.abs(axisY)) {
+                        // Horizontal movement
+                        if (axisX < -JOYSTICK_DEADZONE) {
+                            newDir = { x: -1, y: 0 };
+                        } else if (axisX > JOYSTICK_DEADZONE) {
+                            newDir = { x: 1, y: 0 };
+                        }
+                    } else {
+                        // Vertical movement
+                        if (axisY < -JOYSTICK_DEADZONE) {
+                            newDir = { x: 0, y: -1 };
+                        } else if (axisY > JOYSTICK_DEADZONE) {
+                            newDir = { x: 0, y: 1 };
+                        }
+                    }
+                }
+            }
+
+            // Apply direction if valid and not opposite
+            if (newDir) {
+                const isNewInput = newDir.x !== lastGamepadInput.x || newDir.y !== lastGamepadInput.y;
+                const isNotOpposite = newDir.x !== -dir.x || newDir.y !== -dir.y;
+                
+                if (isNewInput && isNotOpposite) {
+                    nextDir = newDir;
+                    lastGamepadInput = { ...newDir };
+                    if (performance.now() - lastTime > speed * 0.3) lastTime = 0;
+                }
+            } else {
+                // Reset last input when joystick is in neutral
+                lastGamepadInput = { x: 0, y: 0 };
+            }
+
+            break; // Only use first connected gamepad
+        }
+
+        requestAnimationFrame(pollGamepad);
+    }
+
+    // Start gamepad polling
+    pollGamepad();
+
     document.addEventListener('click', () => initAudio(), { once: true });
     document.addEventListener('keydown', () => initAudio(), { once: true });
 </script>
