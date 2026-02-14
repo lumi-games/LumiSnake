@@ -53,16 +53,84 @@
             margin-bottom: 50px;
         }
         
+        .menu-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .menu-icon-btn {
+            width: 90px;
+            height: 90px;
+            border-radius: 25px;
+            border: 3px solid #0f0;
+            background: rgba(0, 30, 0, 0.8);
+            color: #0f0;
+            font-size: 40px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        .menu-icon-btn:hover {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 40px #0f0;
+            transform: scale(1.1);
+        }
+        .menu-icon-btn.settings-icon {
+            border-color: #0f0;
+        }
+        .menu-icon-btn.battle-icon {
+            border-color: #ff0;
+            color: #ff0;
+            box-shadow: 0 0 20px rgba(255, 255, 0, 0.3);
+        }
+        .menu-icon-btn.battle-icon:hover {
+            background: #ff0;
+            color: #000;
+            box-shadow: 0 0 40px #ff0;
+        }
+        
+        .menu-play-btn {
+            width: 200px;
+            height: 90px;
+            border-radius: 45px;
+            border: 4px solid #0f0;
+            background: linear-gradient(180deg, rgba(0, 80, 0, 0.9), rgba(0, 40, 0, 0.9));
+            color: #0f0;
+            font-size: 32px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+            text-shadow: 0 0 10px #0f0;
+        }
+        .menu-play-btn:hover {
+            background: linear-gradient(180deg, #0f0, #0a0);
+            color: #000;
+            box-shadow: 0 0 60px #0f0;
+            transform: scale(1.05);
+            text-shadow: none;
+        }
+        
         .menu-buttons { 
             display: flex; 
-            flex-direction: column; 
+            flex-direction: row; 
             gap: 20px; 
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
+            justify-content: center;
         }
         .menu-buttons .btn {
-            font-size: 24px;
-            padding: 20px 60px;
+            font-size: 16px;
+            padding: 15px 30px;
+            flex: 1;
         }
         
         .popup-box { 
@@ -815,10 +883,13 @@
     <div id="main-menu" class="box">
         <h1>LUMISNAKE</h1>
         <p class="subtitle">by: LUMIGAMES™</p>
+        <div class="menu-row">
+            <button class="menu-icon-btn settings-icon" onclick="showSettings()">⚙</button>
+            <button class="menu-play-btn" onclick="runGame()">▶ PLAY</button>
+            <button class="menu-icon-btn battle-icon" onclick="showBattleConfig()">⚔</button>
+        </div>
         <div class="menu-buttons">
-            <button class="btn" onclick="showSettings()">▶ START</button>
-            <button class="btn battle" onclick="showBattleConfig()">⚔ BATTLE</button>
-            <button class="btn" onclick="showAudioSettings()">⚙ SETTINGS</button>
+            <button class="btn" onclick="showAudioSettings()">🔊 AUDIO</button>
             <button class="btn" onclick="showSkins()">🎨 SKINS</button>
         </div>
     </div>
@@ -957,12 +1028,14 @@
 
     <div id="settings-menu" class="box popup-box">
         <button class="close-btn" onclick="hideSettings()">X</button>
-        <h2>⚡ CONFIG</h2>
+        <h2>⚙ GAME CONFIG</h2>
         <div class="option">
             <label>LEVEL SIZE:</label>
             <select id="grid-size">
-                <option value="10">10 x 10</option>
-                <option value="25" selected>25 x 25</option>
+                <option value="10">10 x 10 (Small)</option>
+                <option value="15">15 x 15 (Medium)</option>
+                <option value="25" selected>25 x 25 (Large)</option>
+                <option value="30">30 x 30 (Huge)</option>
             </select>
         </div>
         <div class="option">
@@ -973,15 +1046,15 @@
             <label class="custom-check">
                 <input type="checkbox" id="no-walls">
                 <span class="check-circle"></span>
-                NO WALLS (TP)
+                NO WALLS (Teleport)
             </label>
             <label class="custom-check">
                 <input type="checkbox" id="allow-bonuses">
                 <span class="check-circle"></span>
-                ALLOW BONUSES
+                SPAWN BONUSES (+10 pts)
             </label>
         </div>
-        <button class="btn" onclick="runGame()">🚀 LAUNCH</button>
+        <button class="btn" onclick="applySettings()">💾 SAVE SETTINGS</button>
     </div>
 
     <div id="battle-config" class="box popup-box">
@@ -2515,10 +2588,32 @@
 
     function showSettings() { 
         playSound('click'); hideAll();
-        showCoinDisplay(false); showUserDisplay(false); showLeaderboardBtn(false); showMusicToggle(false);
+        showCoinDisplay(true); showUserDisplay(true); showLeaderboardBtn(false); showMusicToggle(true);
         document.getElementById('settings-menu').style.display = 'block'; 
     }
     function hideSettings() { playSound('close'); showMainMenu(); }
+    
+    function applySettings() {
+        playSound('click');
+        localStorage.setItem('lumisnake_gridsize', document.getElementById('grid-size').value);
+        localStorage.setItem('lumisnake_apples', document.getElementById('apple-count').value);
+        localStorage.setItem('lumisnake_nowalls', document.getElementById('no-walls').checked);
+        localStorage.setItem('lumisnake_bonuses', document.getElementById('allow-bonuses').checked);
+        showToast('Settings saved!', 'success');
+        hideSettings();
+    }
+    
+    function loadSavedSettings() {
+        const gridSize = localStorage.getItem('lumisnake_gridsize');
+        const apples = localStorage.getItem('lumisnake_apples');
+        const noWalls = localStorage.getItem('lumisnake_nowalls');
+        const bonuses = localStorage.getItem('lumisnake_bonuses');
+        
+        if (gridSize) document.getElementById('grid-size').value = gridSize;
+        if (apples) document.getElementById('apple-count').value = apples;
+        if (noWalls !== null) document.getElementById('no-walls').checked = noWalls === 'true';
+        if (bonuses !== null) document.getElementById('allow-bonuses').checked = bonuses === 'true';
+    }
 
     function showAudioSettings() {
         playSound('click'); hideAll();
@@ -2652,16 +2747,25 @@
         playSound('click');
         initAudio();
         isBattleMode = false;
-        GRID = parseInt(document.getElementById('grid-size').value);
-        settings.noWalls = document.getElementById('no-walls').checked;
-        settings.bonuses = document.getElementById('allow-bonuses').checked;
+        
+        // Load saved settings
+        const savedGrid = localStorage.getItem('lumisnake_gridsize');
+        const savedApples = localStorage.getItem('lumisnake_apples');
+        const savedNoWalls = localStorage.getItem('lumisnake_nowalls');
+        const savedBonuses = localStorage.getItem('lumisnake_bonuses');
+        
+        GRID = parseInt(savedGrid || document.getElementById('grid-size').value);
+        settings.noWalls = savedNoWalls === 'true' || document.getElementById('no-walls').checked;
+        settings.bonuses = savedBonuses === 'true' || document.getElementById('allow-bonuses').checked;
+        settings.appleCount = parseInt(savedApples || document.getElementById('apple-count').value);
+        
         CELL = 600 / GRID;
         score = 0;
         document.getElementById('score-val').innerText = score;
         snake = [{x:5,y:5},{x:4,y:5},{x:3,y:5}];
         dir = {x:1,y:0}; nextDir = {x:1,y:0};
         foods = []; bonuses = [];
-        for (let i = 0; i < parseInt(document.getElementById('apple-count').value); i++) spawnFood();
+        for (let i = 0; i < settings.appleCount; i++) spawnFood();
         hideAll();
         showCoinDisplay(false); showUserDisplay(false); showLeaderboardBtn(false); showMusicToggle(false);
         document.getElementById('game-ui').style.display = 'block';
@@ -2952,6 +3056,9 @@
 
     document.addEventListener('click', () => initAudio(), { once: true });
     document.addEventListener('keydown', () => initAudio(), { once: true });
+    
+    // Load saved game settings on page load
+    loadSavedSettings();
 </script>
 </body>
 </html>
