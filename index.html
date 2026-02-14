@@ -2216,65 +2216,109 @@
 
     async function joinMatchmaking(gridSize) {
         const queueRef = database.ref('matchmaking/' + gridSize);
-        const myEntry = {
-            oderId: currentUser.uid,
-            playerName: userProfile?.username || currentUser.displayName || 'Player',
-            timestamp: Date.now()
-        };
+        const myUid = currentUser.uid;
+        const myName = userProfile?.username || currentUser.displayName || 'Player';
         
-        const snapshot = await queueRef.orderByChild('timestamp').limitToFirst(1).once('value');
-        let opponent = null;
-        snapshot.forEach(c => {
-            const val = c.val();
-            if (val.oderId && val.oderId !== currentUser.uid) {
-                opponent = { oderId: val.oderId, playerName: val.playerName };
-            }
-        });
+        console.log('[BATTLE] Starting matchmaking, grid:', gridSize);
         
-        if (opponent) {
-            await queueRef.child(opponent.oderId).remove();
-            const newBattleId = database.ref('battles').push().key;
-            await database.ref('battles/' + newBattleId).set({
-                player1: { oderId: opponent.oderId, name: opponent.playerName, score: 0 },
-                player2: { oderId: currentUser.uid, name: userProfile?.username || currentUser.displayName || 'Player', score: 0 },
-                gridSize: parseInt(gridSize),
-                status: 'preparing',
-                createdAt: Date.now()
-            });
-            startBattle(newBattleId, opponent.playerName, parseInt(gridSize));
-        } else {
-            matchmakingRef = queueRef.child(currentUser.uid);
-            await matchmakingRef.set(myEntry);
+        try {
+            const snapshot = await queueRef.once('value');
+            let opponent = null;
+            let opponentKey = null;
             
-            database.ref('battles').orderByChild('createdAt').limitToLast(10).on('child_added', async (bSnap) => {
-                if (!searchingForBattle) return;
-                const b = bSnap.val();
-                if (b && b.status === 'preparing') {
-                    if (b.player1.oderId === currentUser.uid || b.player2.oderId === currentUser.uid) {
-                        searchingForBattle = false;
-                        database.ref('battles').off();
-                        queueRef.off();
-                        if (matchmakingRef) matchmakingRef.remove();
-                        const oppName = b.player1.oderId === currentUser.uid ? b.player2.name : b.player1.name;
-                        startBattle(bSnap.key, oppName, b.gridSize);
-                    }
+            snapshot.forEach(c => {
+                const val = c.val();
+                if (val && val.oderId && val.oderId !== myUid && !opponent) {
+                    opponent = { oderId: val.oderId, playerName: val.playerName || 'Player' };
+                    opponentKey = c.key;
                 }
             });
+            
+            if (opponent && opponentKey) {
+                console.log('[BATTLE] Found opponent:', opponent.playerName);
+                document.getElementById('search-status').innerText = 'Opponent found! Starting...';
+                
+                await queueRef.child(opponentKey).remove();
+                
+                const newBattleRef = database.ref('battles').push();
+                const newBattleId = newBattleRef.key;
+                
+                await newBattleRef.set({
+                    player1: { oderId: opponent.oderId, name: opponent.playerName, score: 0 },
+                    player2: { oderId: myUid, name: myName, score: 0 },
+                    gridSize: parseInt(gridSize),
+                    status: 'preparing',
+                    createdAt: Date.now()
+                });
+                
+                console.log('[BATTLE] Created battle:', newBattleId);
+                searchingForBattle = false;
+                startBattle(newBattleId, opponent.playerName, parseInt(gridSize));
+            } else {
+                console.log('[BATTLE] No opponent, joining queue...');
+                document.getElementById('search-status').innerText = 'Waiting for opponent...';
+                
+                matchmakingRef = queueRef.child(myUid);
+                await matchmakingRef.set({
+                    oderId: myUid,
+                    playerName: myName,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+                matchmakingRef.onDisconnect().remove();
+                
+                const battlesRef = database.ref('battles');
+                battlesRef.orderByChild('status').equalTo('preparing').on('child_added', (bSnap) => {
+                    if (!searchingForBattle) return;
+                    
+                    const b = bSnap.val();
+                    if (!b) return;
+                    
+                    console.log('[BATTLE] New battle detected:', bSnap.key);
+                    
+                    const isPlayer1 = b.player1 && b.player1.oderId === myUid;
+                    const isPlayer2 = b.player2 && b.player2.oderId === myUid;
+                    
+                    if (isPlayer1 || isPlayer2) {
+                        console.log('[BATTLE] I am in this battle!');
+                        searchingForBattle = false;
+                        battlesRef.off();
+                        if (matchmakingRef) {
+                            matchmakingRef.remove();
+                            matchmakingRef = null;
+                        }
+                        
+                        const oppName = isPlayer1 ? b.player2.name : b.player1.name;
+                        startBattle(bSnap.key, oppName, b.gridSize);
+                    }
+                });
+            }
+        } catch (e) {
+            console.error('[BATTLE] Matchmaking error:', e);
+            showToast('Error: ' + e.message, 'gold');
+            cancelBattleSearch();
         }
     }
 
     function cancelBattleSearch() {
         playSound('close');
         searchingForBattle = false;
+        
         if (matchmakingRef) {
+            matchmakingRef.off();
             matchmakingRef.remove();
             matchmakingRef = null;
         }
+        
         try {
-            const gridSize = document.getElementById('battle-grid-size').value;
-            database.ref('matchmaking/' + gridSize).off();
             database.ref('battles').off();
-        } catch (e) {}
+            database.ref('matchmaking/15').off();
+            database.ref('matchmaking/20').off();
+            database.ref('matchmaking/25').off();
+        } catch (e) {
+            console.log('[BATTLE] Cleanup error:', e);
+        }
+        
         showMainMenu();
     }
 
