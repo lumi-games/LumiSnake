@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LUMISNAKE alpha 0.5</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -24,13 +25,70 @@
         }
         canvas#bg { position: fixed; z-index: -1; top: 0; left: 0; }
         
+        /* Smooth transitions for all interactive elements */
+        *, *::before, *::after {
+            transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
+        }
+        
         .box { 
             background: rgba(0, 15, 0, 0.95); 
             border: 3px solid #0f0; 
             border-radius: 50px; 
             box-shadow: 0 0 80px rgba(0, 255, 0, 0.4); 
             backdrop-filter: blur(20px); 
-            text-align: center; 
+            text-align: center;
+            animation: boxAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        @keyframes boxAppear {
+            0% { opacity: 0; transform: scale(0.8) translateY(30px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            0% { opacity: 0; transform: translateY(40px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideDown {
+            0% { opacity: 0; transform: translateY(-40px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideLeft {
+            0% { opacity: 0; transform: translateX(40px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes slideRight {
+            0% { opacity: 0; transform: translateX(-40px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes scaleIn {
+            0% { opacity: 0; transform: scale(0.5); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 20px currentColor; }
+            50% { box-shadow: 0 0 40px currentColor, 0 0 60px currentColor; }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
         }
         
         #main-menu { 
@@ -45,12 +103,27 @@
             margin-bottom: 10px;
             text-shadow: 0 0 30px #0f0, 0 0 60px #0f0;
             letter-spacing: 8px;
+            animation: slideDown 0.6s ease-out, textGlowPulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes textGlowPulse {
+            0%, 100% { text-shadow: 0 0 30px #0f0, 0 0 60px #0f0; }
+            50% { text-shadow: 0 0 50px #0f0, 0 0 100px #0f0, 0 0 150px #0f0; }
         }
         #main-menu .subtitle {
             font-size: 18px;
             opacity: 0.6;
             letter-spacing: 4px;
             margin-bottom: 50px;
+            animation: fadeIn 0.8s ease-out 0.2s backwards;
+        }
+        
+        .menu-row {
+            animation: slideUp 0.5s ease-out 0.3s backwards;
+        }
+        
+        .menu-buttons {
+            animation: slideUp 0.5s ease-out 0.4s backwards;
         }
         
         .menu-row {
@@ -64,9 +137,9 @@
         .menu-icon-btn {
             width: 90px;
             height: 90px;
-            border-radius: 25px;
+            border-radius: 50%;
             border: 3px solid #0f0;
-            background: rgba(0, 30, 0, 0.8);
+            background: linear-gradient(180deg, rgba(0, 80, 0, 0.9), rgba(0, 30, 0, 0.9));
             color: #0f0;
             font-size: 40px;
             cursor: pointer;
@@ -74,13 +147,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.4);
+            text-shadow: 0 0 15px #0f0, 0 0 30px #0f0;
         }
         .menu-icon-btn:hover {
-            background: #0f0;
+            background: linear-gradient(180deg, #0f0, #0a0);
             color: #000;
-            box-shadow: 0 0 40px #0f0;
-            transform: scale(1.1);
+            box-shadow: 0 0 50px #0f0;
+            transform: scale(1.15);
+            text-shadow: none;
         }
         .menu-icon-btn.settings-icon {
             border-color: #0f0;
@@ -88,12 +163,16 @@
         .menu-icon-btn.battle-icon {
             border-color: #ff0;
             color: #ff0;
-            box-shadow: 0 0 20px rgba(255, 255, 0, 0.3);
+            background: linear-gradient(180deg, rgba(80, 80, 0, 0.9), rgba(30, 30, 0, 0.9));
+            box-shadow: 0 0 25px rgba(255, 255, 0, 0.4);
+            text-shadow: 0 0 15px #ff0, 0 0 30px #ff0;
         }
         .menu-icon-btn.battle-icon:hover {
-            background: #ff0;
+            background: linear-gradient(180deg, #ff0, #aa0);
             color: #000;
-            box-shadow: 0 0 40px #ff0;
+            box-shadow: 0 0 50px #ff0;
+            transform: scale(1.15);
+            text-shadow: none;
         }
         
         .menu-play-btn {
@@ -108,13 +187,13 @@
             font-weight: bold;
             cursor: pointer;
             transition: 0.3s;
-            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
-            text-shadow: 0 0 10px #0f0;
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.4);
+            text-shadow: 0 0 15px #0f0, 0 0 30px #0f0;
         }
         .menu-play-btn:hover {
             background: linear-gradient(180deg, #0f0, #0a0);
             color: #000;
-            box-shadow: 0 0 60px #0f0;
+            box-shadow: 0 0 50px #0f0;
             transform: scale(1.05);
             text-shadow: none;
         }
@@ -131,13 +210,23 @@
             font-size: 16px;
             padding: 15px 30px;
             flex: 1;
+            background: linear-gradient(180deg, rgba(0, 60, 0, 0.9), rgba(0, 25, 0, 0.9));
+            text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+        }
+        .menu-buttons .btn:hover {
+            text-shadow: none;
         }
         
         .popup-box { 
             display: none; 
             padding: 40px; 
             position: relative; 
-            width: 500px; 
+            width: 500px;
+            animation: boxAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .popup-box h2 {
+            animation: slideDown 0.4s ease-out;
         }
         #skins-menu { width: 650px; max-height: 85vh; overflow-y: auto; }
         #leaderboard-menu { width: 550px; max-height: 85vh; }
@@ -161,10 +250,18 @@
             font-weight: bold; 
             font-family: 'Orbitron'; 
             font-size: 20px;
-            transition: 0.3s;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
             z-index: 10;
+            animation: scaleIn 0.3s ease-out 0.2s backwards;
         }
-        .close-btn:hover { background: #ff3333; transform: scale(1.1); }
+        .close-btn:hover { 
+            background: #ff3333; 
+            transform: scale(1.15) rotate(90deg); 
+            box-shadow: 0 0 30px #f00;
+        }
+        .close-btn:active {
+            transform: scale(0.95) rotate(90deg);
+        }
         
         #coin-display { 
             position: fixed; 
@@ -178,9 +275,14 @@
             align-items: center; 
             gap: 15px; 
             box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); 
-            z-index: 100; 
+            z-index: 100;
+            animation: slideLeft 0.5s ease-out;
         }
-        #coin-display.hidden { display: none; }
+        #coin-display.hidden { 
+            opacity: 0;
+            transform: translateX(100px);
+            pointer-events: none;
+        }
         .coin-icon { 
             width: 36px; 
             height: 36px; 
@@ -210,10 +312,21 @@
             box-shadow: 0 0 30px rgba(0, 255, 0, 0.4);
             z-index: 100;
             cursor: pointer;
-            transition: 0.3s;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: slideRight 0.5s ease-out;
         }
-        #user-display:hover { box-shadow: 0 0 40px rgba(0, 255, 0, 0.6); }
-        #user-display.hidden { display: none; }
+        #user-display:hover { 
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.6); 
+            transform: scale(1.05);
+        }
+        #user-display:active {
+            transform: scale(0.98);
+        }
+        #user-display.hidden { 
+            opacity: 0;
+            transform: translateX(-100px);
+            pointer-events: none;
+        }
         .user-avatar {
             width: 40px;
             height: 40px;
@@ -266,17 +379,25 @@
             font-size: 18px;
             cursor: pointer;
             box-shadow: 0 0 25px rgba(255, 170, 0, 0.4);
-            transition: 0.3s;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
             z-index: 100;
             display: flex;
             align-items: center;
             gap: 10px;
+            animation: slideUp 0.5s ease-out 0.3s backwards;
         }
         #leaderboard-btn:hover {
             box-shadow: 0 0 40px rgba(255, 170, 0, 0.7);
-            transform: scale(1.05);
+            transform: scale(1.08) translateY(-3px);
         }
-        #leaderboard-btn.hidden { display: none; }
+        #leaderboard-btn:active {
+            transform: scale(0.98);
+        }
+        #leaderboard-btn.hidden { 
+            opacity: 0;
+            transform: translateY(50px);
+            pointer-events: none;
+        }
 
         #music-toggle {
             position: fixed;
@@ -291,15 +412,26 @@
             font-size: 24px;
             cursor: pointer;
             box-shadow: 0 0 25px rgba(0, 255, 0, 0.4);
-            transition: 0.3s;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
             z-index: 100;
             display: flex;
             align-items: center;
             justify-content: center;
+            animation: slideUp 0.5s ease-out 0.4s backwards;
         }
-        #music-toggle:hover { box-shadow: 0 0 40px rgba(0, 255, 0, 0.7); transform: scale(1.1); }
+        #music-toggle:hover { 
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.7); 
+            transform: scale(1.15) rotate(10deg); 
+        }
+        #music-toggle:active {
+            transform: scale(0.95);
+        }
         #music-toggle.muted { border-color: #f00; color: #f00; box-shadow: 0 0 25px rgba(255, 0, 0, 0.4); }
-        #music-toggle.hidden { display: none; }
+        #music-toggle.hidden { 
+            opacity: 0;
+            transform: translateY(50px);
+            pointer-events: none;
+        }
 
         #game-ui { 
             display: none; 
@@ -358,13 +490,33 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0);
             z-index: 1000;
             justify-content: center;
             align-items: center;
             flex-direction: column;
+            opacity: 0;
+            transition: all 0.5s ease;
         }
-        #new-record-overlay.active, #battle-result-overlay.active, #battle-prep-overlay.active { display: flex; }
+        #new-record-overlay.active, #battle-result-overlay.active, #battle-prep-overlay.active { 
+            display: flex; 
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.9);
+            animation: fadeIn 0.5s ease-out;
+        }
+        #new-record-overlay.active .overlay-title,
+        #battle-result-overlay.active .overlay-title,
+        #battle-prep-overlay.active .overlay-title {
+            animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), overlayTextGlow 2s ease-in-out infinite;
+        }
+        #new-record-overlay.active .overlay-score,
+        #battle-result-overlay.active .overlay-subtitle {
+            animation: slideUp 0.5s ease-out 0.2s backwards;
+        }
+        #new-record-overlay.active .btn,
+        #battle-result-overlay.active .btn {
+            animation: slideUp 0.5s ease-out 0.4s backwards;
+        }
         
         .overlay-title {
             font-size: 60px;
@@ -401,6 +553,11 @@
             color: #ff0;
             text-shadow: 0 0 50px #ff0;
             margin: 30px 0;
+        }
+        
+        @keyframes overlayTextGlow {
+            0%, 100% { text-shadow: 0 0 30px currentColor, 0 0 60px currentColor; }
+            50% { text-shadow: 0 0 50px currentColor, 0 0 100px currentColor, 0 0 150px currentColor; }
         }
         
         @keyframes pulse-record {
@@ -490,12 +647,31 @@
             border-radius: 25px; 
             padding: 20px; 
             text-align: center; 
-            transition: 0.3s; 
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); 
             cursor: pointer;
+            animation: scaleIn 0.4s ease-out backwards;
         }
-        .skin-card:hover { box-shadow: 0 0 25px #0f0; transform: translateY(-5px); }
+        .skin-card:nth-child(1) { animation-delay: 0.05s; }
+        .skin-card:nth-child(2) { animation-delay: 0.1s; }
+        .skin-card:nth-child(3) { animation-delay: 0.15s; }
+        .skin-card:nth-child(4) { animation-delay: 0.2s; }
+        .skin-card:nth-child(5) { animation-delay: 0.25s; }
+        .skin-card:nth-child(6) { animation-delay: 0.3s; }
+        .skin-card:nth-child(7) { animation-delay: 0.35s; }
+        .skin-card:nth-child(8) { animation-delay: 0.4s; }
+        .skin-card:nth-child(9) { animation-delay: 0.45s; }
+        .skin-card:nth-child(10) { animation-delay: 0.5s; }
+        .skin-card:nth-child(11) { animation-delay: 0.55s; }
+        .skin-card:nth-child(12) { animation-delay: 0.6s; }
+        .skin-card:hover { 
+            box-shadow: 0 0 35px #0f0; 
+            transform: translateY(-8px) scale(1.02); 
+        }
+        .skin-card:active {
+            transform: translateY(-2px) scale(0.98);
+        }
         .skin-card.owned { border-color: gold; }
-        .skin-card.selected { border-color: #00ffff; box-shadow: 0 0 30px #00ffff; }
+        .skin-card.selected { border-color: #00ffff; box-shadow: 0 0 30px #00ffff; animation: glowPulse 2s ease-in-out infinite; }
         .skin-card.locked { opacity: 0.6; }
         .skin-preview { height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
         .skin-line { width: 85%; height: 14px; border-radius: 7px; box-shadow: 0 0 20px currentColor; }
@@ -838,9 +1014,76 @@
             font-family:'Orbitron';
             text-align:center;
         }
+
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 20000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.8s ease;
+        }
+        #splash-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .splash-logo {
+            font-size: 72px;
+            font-weight: 900;
+            color: #0f0;
+            letter-spacing: 6px;
+            text-shadow: 0 0 30px #0f0, 0 0 70px #0f0;
+            position: relative;
+            transform: rotate(-4deg);
+            opacity: 0;
+            animation: splashStamp 1.2s cubic-bezier(0.2, 1.2, 0.35, 1) forwards;
+        }
+        .splash-logo .tm {
+            font-size: 22px;
+            vertical-align: super;
+            margin-left: 6px;
+            position: relative;
+        }
+        .splash-logo::after {
+            display: none;
+            content: '';
+        }
+        .splash-star {
+            position: absolute;
+            top: -8px;
+            right: -18px;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #fff, 0 0 30px #fff;
+            opacity: 0;
+            animation: splashStar 0.6s ease 1.4s forwards;
+        }
+        @keyframes splashStamp {
+            0% { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+            60% { opacity: 1; transform: scale(1.05) rotate(-4deg); }
+            100% { opacity: 1; transform: scale(1) rotate(-4deg); }
+        }
+        @keyframes splashShine {
+            to { transform: translateX(120%); }
+        }
+        @keyframes splashStar {
+            0% { opacity: 0; transform: scale(0.6); }
+            60% { opacity: 1; transform: scale(1.3); }
+            100% { opacity: 0; transform: scale(0.4); }
+        }
     </style>
 </head>
 <body>
+    <div id="splash-screen">
+        <div class="splash-logo" data-text="LUMIGAMES™">LUMIGAMES<span class="tm">™</span>
+            <div class="splash-star"></div>
+        </div>
+    </div>
     <canvas id="bg"></canvas>
     <div id="toast-container"></div>
 
@@ -2432,7 +2675,7 @@
         
         snake = [{x:5,y:5},{x:4,y:5},{x:3,y:5}];
         dir = {x:1,y:0}; nextDir = {x:1,y:0};
-        foods = []; bonuses = [];
+        foods = []; bonuses = []; dyingFoods = []; dyingBonuses = [];
         for (let i = 0; i < 3; i++) spawnFood();
         
         hideAll();
@@ -2764,7 +3007,7 @@
         document.getElementById('score-val').innerText = score;
         snake = [{x:5,y:5},{x:4,y:5},{x:3,y:5}];
         dir = {x:1,y:0}; nextDir = {x:1,y:0};
-        foods = []; bonuses = [];
+        foods = []; bonuses = []; dyingFoods = []; dyingBonuses = [];
         for (let i = 0; i < settings.appleCount; i++) spawnFood();
         hideAll();
         showCoinDisplay(false); showUserDisplay(false); showLeaderboardBtn(false); showMusicToggle(false);
@@ -2777,12 +3020,15 @@
         requestAnimationFrame(gameLoop);
     }
 
+    let dyingFoods = [];
+    let dyingBonuses = [];
+
     function spawnFood() {
-        let f = {x:Math.floor(Math.random()*GRID), y:Math.floor(Math.random()*GRID)};
+        let f = {x:Math.floor(Math.random()*GRID), y:Math.floor(Math.random()*GRID), scale: 0, spawnTime: performance.now()};
         if (snake.some(s => s.x === f.x && s.y === f.y)) return spawnFood();
         foods.push(f);
         if (!isBattleMode && settings.bonuses && Math.random() > 0.85 && bonuses.length === 0) {
-            bonuses.push({x:Math.floor(Math.random()*GRID), y:Math.floor(Math.random()*GRID)});
+            bonuses.push({x:Math.floor(Math.random()*GRID), y:Math.floor(Math.random()*GRID), scale: 0, spawnTime: performance.now()});
         }
     }
 
@@ -2847,8 +3093,10 @@
         snake.unshift(head);
         let ate = false;
         
-        foods.forEach((f, i) => {
+        for (let i = foods.length - 1; i >= 0; i--) {
+            const f = foods[i];
             if (head.x === f.x && head.y === f.y) {
+                dyingFoods.push({x: f.x, y: f.y, scale: 1, deathTime: performance.now()});
                 foods.splice(i, 1);
                 spawnFood();
                 ate = true;
@@ -2861,10 +3109,12 @@
                 playSound('eat');
                 if (isBattleMode) updateBattleScore();
             }
-        });
+        }
         
-        bonuses.forEach((b, i) => {
+        for (let i = bonuses.length - 1; i >= 0; i--) {
+            const b = bonuses[i];
             if (head.x === b.x && head.y === b.y) {
+                dyingBonuses.push({x: b.x, y: b.y, scale: 1, deathTime: performance.now()});
                 bonuses.splice(i, 1);
                 ate = true;
                 score += 10;
@@ -2876,7 +3126,7 @@
                 playSound('bonus');
                 triggerPop();
             }
-        });
+        }
         
         document.getElementById('score-val').innerText = score;
         if (!ate) snake.pop();
@@ -2894,53 +3144,159 @@
         scorePop.style.color = `hsl(${hue}, 100%, 60%)`;
         scorePop.style.textShadow = `0 0 10px hsl(${hue}, 100%, 60%)`;
 
+        const now = performance.now();
+        const FOOD_SPAWN_DURATION = 300;
+        const FOOD_DEATH_DURATION = 200;
+
         foods.forEach(f => {
-            ctx.shadowBlur = 25;
+            let elapsed = now - (f.spawnTime || 0);
+            let s = Math.min(elapsed / FOOD_SPAWN_DURATION, 1);
+            s = 1 - Math.pow(1 - s, 3);
+            f.scale = s;
+            if (s <= 0) return;
+            const r = (CELL / 3) * s;
+            const glowSize = 25 * s;
+            ctx.shadowBlur = glowSize;
             ctx.shadowColor = '#f00';
             ctx.fillStyle = '#f00';
+            ctx.globalAlpha = s;
             ctx.beginPath();
-            ctx.arc(f.x*CELL+CELL/2, f.y*CELL+CELL/2, CELL/3, 0, 7);
+            ctx.arc(f.x*CELL+CELL/2, f.y*CELL+CELL/2, r, 0, Math.PI * 2);
             ctx.fill();
+            ctx.globalAlpha = 1;
         });
+
+        for (let i = dyingFoods.length - 1; i >= 0; i--) {
+            const df = dyingFoods[i];
+            let elapsed = now - df.deathTime;
+            let s = 1 - Math.min(elapsed / FOOD_DEATH_DURATION, 1);
+            s = s * s;
+            if (s <= 0.01) { dyingFoods.splice(i, 1); continue; }
+            const r = (CELL / 3) * s;
+            ctx.shadowBlur = 25 * s;
+            ctx.shadowColor = '#f00';
+            ctx.fillStyle = '#ff4444';
+            ctx.globalAlpha = s;
+            ctx.beginPath();
+            ctx.arc(df.x*CELL+CELL/2, df.y*CELL+CELL/2, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
         
         bonuses.forEach(b => {
-            ctx.shadowBlur = 30;
+            let elapsed = now - (b.spawnTime || 0);
+            let s = Math.min(elapsed / FOOD_SPAWN_DURATION, 1);
+            s = 1 - Math.pow(1 - s, 3);
+            b.scale = s;
+            if (s <= 0) return;
+            const r = (CELL / 2.5) * s;
+            ctx.shadowBlur = 30 * s;
             ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
             ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+            ctx.globalAlpha = s;
             ctx.beginPath();
-            ctx.arc(b.x*CELL+CELL/2, b.y*CELL+CELL/2, CELL/2.5, 0, 7);
+            ctx.arc(b.x*CELL+CELL/2, b.y*CELL+CELL/2, r, 0, Math.PI * 2);
             ctx.fill();
+            ctx.globalAlpha = 1;
         });
+
+        for (let i = dyingBonuses.length - 1; i >= 0; i--) {
+            const db = dyingBonuses[i];
+            let elapsed = now - db.deathTime;
+            let s = 1 - Math.min(elapsed / FOOD_DEATH_DURATION, 1);
+            s = s * s;
+            if (s <= 0.01) { dyingBonuses.splice(i, 1); continue; }
+            const r = (CELL / 2.5) * s;
+            ctx.shadowBlur = 30 * s;
+            ctx.shadowColor = `hsl(${hue}, 100%, 70%)`;
+            ctx.fillStyle = `hsl(${hue}, 100%, 70%)`;
+            ctx.globalAlpha = s;
+            ctx.beginPath();
+            ctx.arc(db.x*CELL+CELL/2, db.y*CELL+CELL/2, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        if (snake.length < 2) {
+            let snakeColor = getCurrentSkinColor();
+            if (selectedSkin === 'rainbow') snakeColor = `hsl(${hue}, 100%, 50%)`;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = snakeColor;
+            ctx.fillStyle = snakeColor;
+            ctx.beginPath();
+            ctx.arc(snake[0].x*CELL+CELL/2, snake[0].y*CELL+CELL/2, CELL*0.4, 0, 7);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            return;
+        }
 
         let snakeColor = getCurrentSkinColor();
         if (selectedSkin === 'rainbow') snakeColor = `hsl(${hue}, 100%, 50%)`;
         
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = snakeColor;
-        ctx.strokeStyle = snakeColor;
-        ctx.lineWidth = CELL * 0.8;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(snake[0].x*CELL+CELL/2, snake[0].y*CELL+CELL/2);
-        
-        for (let i = 1; i < snake.length; i++) {
+        const maxWidth = CELL * 0.82;
+        const minWidth = CELL * 0.45;
+        const len = snake.length;
+
+        for (let i = 0; i < len - 1; i++) {
+            const curr = snake[i];
+            const next = snake[i + 1];
+            
+            const isTeleport = Math.abs(curr.x - next.x) > 1 || Math.abs(curr.y - next.y) > 1;
+            if (isTeleport) continue;
+
+            const t1 = i / Math.max(len - 1, 1);
+            const t2 = (i + 1) / Math.max(len - 1, 1);
+            const w1 = maxWidth - (maxWidth - minWidth) * t1 * t1;
+            const w2 = maxWidth - (maxWidth - minWidth) * t2 * t2;
+
+            const x1 = curr.x * CELL + CELL / 2;
+            const y1 = curr.y * CELL + CELL / 2;
+            const x2 = next.x * CELL + CELL / 2;
+            const y2 = next.y * CELL + CELL / 2;
+
+            let segColor = snakeColor;
             if (selectedSkin === 'rainbow') {
-                ctx.stroke();
-                ctx.strokeStyle = `hsl(${(hue + i * 20) % 360}, 100%, 50%)`;
-                ctx.shadowColor = ctx.strokeStyle;
-                ctx.beginPath();
-                ctx.moveTo(snake[i-1].x*CELL+CELL/2, snake[i-1].y*CELL+CELL/2);
+                segColor = `hsl(${(hue + i * 20) % 360}, 100%, 50%)`;
             }
-            if (Math.abs(snake[i].x - snake[i-1].x) > 1 || Math.abs(snake[i].y - snake[i-1].y) > 1) {
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(snake[i].x*CELL+CELL/2, snake[i].y*CELL+CELL/2);
-            } else {
-                ctx.lineTo(snake[i].x*CELL+CELL/2, snake[i].y*CELL+CELL/2);
-            }
+
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const nx = -dy / dist;
+            const ny = dx / dist;
+
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = segColor;
+            ctx.fillStyle = segColor;
+            ctx.beginPath();
+            ctx.moveTo(x1 + nx * w1 / 2, y1 + ny * w1 / 2);
+            ctx.lineTo(x2 + nx * w2 / 2, y2 + ny * w2 / 2);
+            ctx.lineTo(x2 - nx * w2 / 2, y2 - ny * w2 / 2);
+            ctx.lineTo(x1 - nx * w1 / 2, y1 - ny * w1 / 2);
+            ctx.closePath();
+            ctx.fill();
         }
-        ctx.stroke();
+
+        for (let i = 0; i < len; i++) {
+            const t = i / Math.max(len - 1, 1);
+            const w = maxWidth - (maxWidth - minWidth) * t * t;
+            const x = snake[i].x * CELL + CELL / 2;
+            const y = snake[i].y * CELL + CELL / 2;
+
+            let segColor = snakeColor;
+            if (selectedSkin === 'rainbow') {
+                segColor = `hsl(${(hue + i * 20) % 360}, 100%, 50%)`;
+            }
+
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = segColor;
+            ctx.fillStyle = segColor;
+            ctx.beginPath();
+            ctx.arc(x, y, w / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.shadowBlur = 0;
     }
 
     window.onkeydown = e => {
@@ -3059,6 +3415,17 @@
     
     // Load saved game settings on page load
     loadSavedSettings();
+
+    const splash = document.getElementById('splash-screen');
+    const menu = document.getElementById('main-menu');
+    if (menu) menu.style.opacity = '0';
+    setTimeout(() => {
+        splash.classList.add('hidden');
+        setTimeout(() => {
+            splash.style.display = 'none';
+            if (menu) menu.style.opacity = '1';
+        }, 900);
+    }, 2200);
 </script>
 </body>
 </html>
